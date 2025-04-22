@@ -1,11 +1,17 @@
 import json
+import os
+import uuid
 from modelscope_studio.components.pro.chatbot import (
     ChatbotWelcomeConfig,
     ChatbotUserConfig,
     ChatbotBotConfig,
     ChatbotActionConfig,
 )
+from dotenv import load_dotenv
 
+load_dotenv()
+
+api_key = os.getenv("SILICONFLOW_API_KEY")
 primary_color = "#999999"
 
 default_locale = "zh_CN"
@@ -16,6 +22,8 @@ default_theme = {
     }
 }
 default_mcp_config = json.dumps({"mcpServers": {}}, indent=4, ensure_ascii=False)
+
+max_mcp_server_count = 20
 # for internal
 default_mcp_prompts = {
     # "arxiv": ["查找最新的5篇关于量子计算的论文并简要总结", "根据当前时间，找到近期关于大模型的论文，得到研究趋势"],
@@ -35,6 +43,26 @@ default_mcp_prompts = {
 default_mcp_servers = [
     {"name": mcp_name, "enabled": True, "internal": True}
     for mcp_name in default_mcp_prompts.keys()
+]
+
+# 预装大模型列表
+default_model_list = [
+    {
+        "id": str(uuid.uuid4()),
+        "name": "硅基流动DeepSeek V3",
+        "model": "Pro/deepseek-ai/DeepSeek-V3",
+        "token": api_key,
+        "api_url": "https://api.siliconflow.cn/v1",
+        "enabled": True,
+    },
+    {
+        "id": str(uuid.uuid4()),
+        "name": "硅基流动DeepSeek R2",
+        "model": "Pro/deepseek-ai/DeepSeek-R1",
+        "token": api_key,
+        "api_url": "https://api.siliconflow.cn/v1",
+        "enabled": True,
+    },
 ]
 
 

@@ -20,3 +20,11 @@ main.fillable>.wrap>footer {
     background-color: #d9d9d9;
     border-radius: 2px; 
 }
+
+.model-setting-card {
+    min-height: 400px;
+}
+.model-setting-list .ms-gr-ant-list-items {
+    max-height: 300px;
+    overflow: auto;
+}

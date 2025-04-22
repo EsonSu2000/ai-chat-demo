@@ -5,7 +5,7 @@ import modelscope_studio.components.base as ms
 import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 import modelscope_studio.components.antdx as antdx
-from components.my_setting import McpServersModal
+from components.my_setting import McpServersModal, MySettingModal
 
 from config import (
     primary_color,
@@ -93,13 +93,12 @@ def chat_fn(message):  # chatbot, input, send_btn, input
     ], gr.update(value="", loading=False), gr.update(loading=False)
 
 
-def save_mcp_servers(mcp_servers_btn_value, browser_state_value):
-    browser_state_value["mcp_servers"] = mcp_servers_btn_value["data_source"]
+def save_mcp_servers(browser_state_value):
     return gr.update(value=browser_state_value)
 
 
 with gr.Blocks(
-    css=css, css_paths="./assets/css/app.css", fill_width=True, fill_height=True
+    css_paths="./assets/css/app.css", fill_width=True, fill_height=True
 ) as demo:
     browser_state = gr.BrowserState(
         {
@@ -114,6 +113,7 @@ with gr.Blocks(
         mcp_servers_modal, mcp_servers_state = McpServersModal(
             data_source=default_mcp_servers
         )
+        my_setting_modal = MySettingModal()
         with antd.Layout(elem_style=dict(height="98vh")):
             with antd.LayoutSider(
                 width=230,
@@ -161,7 +161,7 @@ with gr.Blocks(
                             paddingRight="10px",
                             cursor="pointer",
                         ),
-                    ):
+                    ) as my_setting_btn:
                         with antd.Flex(
                             justify="space-between",
                             align="center",
@@ -179,7 +179,7 @@ with gr.Blocks(
                                             # width=80,
                                             # height=80,
                                         )
-                                ms.Text("eson Su", elem_style=dict(fontSize="18px"))
+                                ms.Text("Demo", elem_style=dict(fontSize="18px"))
                             antd.Icon(
                                 "RightOutlined",
                             )
@@ -259,8 +259,12 @@ with gr.Blocks(
     # 保存 MCP Servers
     mcp_servers_state.change(
         save_mcp_servers,
-        inputs=[mcp_servers_modal, browser_state],
+        inputs=[browser_state],
         outputs=[browser_state],
     )
+    # 点击我的名称按钮
+    my_setting_btn.click(
+        lambda: gr.update(open=True), outputs=[my_setting_modal], queue=False
+    )
 
-demo.launch(ssr_mode=True)
+demo.launch(ssr_mode=False)
