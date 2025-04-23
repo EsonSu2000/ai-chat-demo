@@ -2,9 +2,7 @@ import modelscope_studio.components.antd as antd
 from modelscope_studio.components.antd.typography import title
 import modelscope_studio.components.base as ms
 import gradio as gr
-from numpy import equal
-from numpy.lib.npyio import DataSource
-from config import max_mcp_server_count, default_model_list
+from config import max_mcp_server_count
 import uuid
 
 
@@ -72,7 +70,7 @@ def McpServersModal(data_source: list[dict]):
     )
 
     def apply_state_change(state_value):
-        # print("apply_state_change", state_value)
+        print("++++apply_state_change", state_value)
         disabled_tool_use = False
         enabled_server_count = 0
         for item in state_value["data_source"]:
@@ -117,7 +115,7 @@ def McpServersModal(data_source: list[dict]):
 
 
 # 我的设置
-def MySettingModal():
+def MySettingModal(setting_data: list[dict]):
     with antd.Modal(
         width=800,
         footer=False,
@@ -131,21 +129,22 @@ def MySettingModal():
             with antd.Tabs.Item(label="个人中心", key="personal_center"):
                 ms.Text("个人中心")
             with antd.Tabs.Item(label="模型配置", key="model_setting"):
-                ModelSetting(default_model_list)
+                model_setting = ModelSetting(setting_data)
             with antd.Tabs.Item(label="MCP服务设置", key="mcp_servers"):
                 ms.Text("MCP Servers")
     my_setting_modal.cancel(
         fn=lambda: gr.update(open=False), outputs=[my_setting_modal]
     )
-    return my_setting_modal
+
+    return my_setting_modal, model_setting
 
 
 # 模型配置
-def ModelSetting(model_list: list[dict]):
-    model_source_state = gr.State({"model_source": model_list})
+def ModelSetting(data_source: list[dict]):
+    setting_data_source = gr.State({"model_source": data_source})
     with ms.Div(elem_classes=["model-setting-card"]) as model_setting:
         with antd.List(
-            data_source=model_list,
+            data_source=data_source,
             header="大模型列表",
             bordered=True,
             elem_classes="model-setting-list",
@@ -178,7 +177,6 @@ def ModelSetting(model_list: list[dict]):
     model_item_form, edit_add_model_modal = edit_or_add_model()
 
     def edit_model_fn(e: gr.EventData):
-        print(e._data)
         is_edit = e._data["component"]["value"] == "编辑"
         current_model = e._data["component"]["switch"]["model"] if is_edit else {}
         return gr.update(value=current_model), gr.update(open=True)
@@ -207,34 +205,34 @@ def ModelSetting(model_list: list[dict]):
                 ({**form_data} if item["id"] == form_data["id"] else item)
                 for item in state_value["model_source"]
             ]
-        print("form_data", state_value["model_source"])
         return gr.update(open=False), gr.update(data_source=state_value["model_source"])
 
     model_item_form.finish(
         on_submit,
-        inputs=[model_source_state, model_item_form],
+        inputs=[setting_data_source, model_item_form],
         outputs=[edit_add_model_modal, model_setting_list],
         queue=False,
     )
 
     def del_model_source(state_value, e: gr.EventData):
-        print(e._data)
         current_model = e._data["component"]["switch"]["model"]
         state_value["model_source"] = [
             item
             for item in state_value["model_source"]
             if item["id"] != current_model["id"]
         ]
-        return gr.update(value=state_value)
+        return gr.update(value=state_value), gr.update(
+            data_source=state_value["model_source"]
+        )
 
     del_btn.click(
         del_model_source,
-        inputs=[model_source_state],
-        outputs=[model_source_state],
+        inputs=[setting_data_source],
+        outputs=[setting_data_source, model_setting_list],
         queue=False,
     )
 
-    def change_model_source(state_value, e: gr.EventData):
+    def switch_model_source(state_value, e: gr.EventData):
         current_model = e._data["component"]["model"]
         enabled = e._data["payload"][0]
         state_value["model_source"] = [
@@ -245,16 +243,26 @@ def ModelSetting(model_list: list[dict]):
             )
             for item in state_value["model_source"]
         ]
-        return gr.update(value=state_value)
+        return gr.update(value=state_value), gr.update(
+            data_source=state_value["model_source"]
+        )
 
     switch_btn.change(
-        change_model_source,
-        inputs=[model_source_state],
-        outputs=[model_source_state],
+        switch_model_source,
+        inputs=[setting_data_source],
+        outputs=[setting_data_source, model_setting_list],
         queue=False,
     )
 
-    return model_setting
+    def setting_data_source_change(state_value):
+        print("+++++++setting_data_source_change", state_value)
+
+    setting_data_source.change(
+        setting_data_source_change,
+        inputs=[setting_data_source],
+        queue=False,
+    )
+    return setting_data_source
 
 
 # 模型新增弹框
@@ -289,7 +297,7 @@ def edit_or_add_model():
                 tooltip="各大模型提供的API key",
                 rules=[{"required": True, "message": "API密钥不能为空"}],
             ):
-                antd.Input()
+                antd.Input.Password()
             with antd.Form.Item(
                 form_name="api_url",
                 label="API地址",

@@ -1,3 +1,4 @@
+from ast import mod
 from json import load
 import time
 import gradio as gr
@@ -14,6 +15,7 @@ from config import (
     default_mcp_config,
     default_mcp_prompts,
     default_mcp_servers,
+    default_model_list,
     bot_config,
     welcome_config,
 )
@@ -105,15 +107,15 @@ with gr.Blocks(
             "mcp_config": default_mcp_config,
             "mcp_prompts": default_mcp_prompts,
             "mcp_servers": default_mcp_servers,
+            "model_list": default_model_list,
         },
-        storage_key="mcp_config",
+        storage_key="app_config",
     )
-
     with ms.Application(), antdx.XProvider(locale=default_locale), ms.AutoLoading():
         mcp_servers_modal, mcp_servers_state = McpServersModal(
             data_source=default_mcp_servers
         )
-        my_setting_modal = MySettingModal()
+        my_setting_modal, model_setting = MySettingModal(default_model_list)
         with antd.Layout(elem_style=dict(height="98vh")):
             with antd.LayoutSider(
                 width=230,
@@ -267,4 +269,8 @@ with gr.Blocks(
         lambda: gr.update(open=True), outputs=[my_setting_modal], queue=False
     )
 
+    def model_setting_change(model_setting_data):
+        print("++++model_setting_change", model_setting_data)
+
+    model_setting.change(model_setting_change, inputs=[model_setting], queue=False)
 demo.launch(ssr_mode=False)
