@@ -112,10 +112,12 @@ with gr.Blocks(
         storage_key="app_config",
     )
     with ms.Application(), antdx.XProvider(locale=default_locale), ms.AutoLoading():
-        mcp_servers_modal, mcp_servers_state = McpServersModal(
-            data_source=default_mcp_servers
+        mcp_servers_modal, mcp_servers_state, mcp_servers_list, mcp_servers_switch = (
+            McpServersModal(data_source=default_mcp_servers)
         )
-        my_setting_modal, model_setting = MySettingModal(default_model_list)
+        my_setting_modal, my_setting_state, model_setting_list = MySettingModal(
+            default_model_list
+        )
         with antd.Layout(elem_style=dict(height="98vh")):
             with antd.LayoutSider(
                 width=230,
@@ -269,8 +271,51 @@ with gr.Blocks(
         lambda: gr.update(open=True), outputs=[my_setting_modal], queue=False
     )
 
-    def model_setting_change(model_setting_data):
-        print("++++model_setting_change", model_setting_data)
+    # 保存模型设置
+    def model_setting_change(model_setting_data, browser_state):
+        browser_state["model_list"] = model_setting_data["model_list"]
+        return gr.update(value=browser_state)
 
-    model_setting.change(model_setting_change, inputs=[model_setting], queue=False)
+    my_setting_state.change(
+        model_setting_change,
+        inputs=[my_setting_state, browser_state],
+        outputs=browser_state,
+    )
+
+    # 保存 MCP 配置
+    def mcp_servers_state_change(mcp_servers_state_value, browser_state):
+        browser_state["mcp_servers"] = mcp_servers_state_value["mcp_servers"]
+        return gr.update(value=browser_state)
+
+    mcp_servers_state.change(
+        mcp_servers_state_change,
+        inputs=[mcp_servers_state, browser_state],
+        outputs=browser_state,
+    )
+
+    # 加载 MCP 配置、模型配置
+    def load(browser_state_value):
+        print("++++load", browser_state_value["mcp_servers"])
+        map_servers = browser_state_value["mcp_servers"]
+        model_list = browser_state_value["model_list"]
+        return (
+            gr.update(value=map_servers),
+            gr.update(data_source=map_servers),
+            gr.update(
+                value=browser_state_value["model_list"],
+            ),
+            gr.update(data_source=model_list),
+        )
+
+    demo.load(
+        load,
+        inputs=[browser_state],
+        outputs=[
+            mcp_servers_state,
+            mcp_servers_list,
+            my_setting_state,
+            model_setting_list,
+        ],
+        trigger_mode="always_last",
+    )
 demo.launch(ssr_mode=False)

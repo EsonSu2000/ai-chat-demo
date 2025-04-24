@@ -7,7 +7,7 @@ import uuid
 
 
 def McpServersModal(data_source: list[dict]):
-    mcp_servers_state = gr.State({"data_source": data_source})
+    mcp_servers_state = gr.State({"mcp_servers": data_source})
     with antd.Modal(
         # open=open,
         width=420,
@@ -41,9 +41,9 @@ def McpServersModal(data_source: list[dict]):
                         mcp_server_switch = antd.Switch(as_item="switch")
 
     def change_mcp_servers_switch(mcp_servers_switch_value, state_value):
-        state_value["data_source"] = [
+        state_value["mcp_servers"] = [
             {**item, "disabled": not mcp_servers_switch_value}
-            for item in state_value["data_source"]
+            for item in state_value["mcp_servers"]
         ]
         return gr.update(value=state_value)
 
@@ -57,9 +57,9 @@ def McpServersModal(data_source: list[dict]):
         print("change_mcp_server_switch", state_value)
         mpc = e._data["component"]["mcp"]
         enable = e._data["payload"][0]
-        state_value["data_source"] = [
+        state_value["mcp_servers"] = [
             {**item, "enabled": enable} if item["name"] == mpc else item
-            for item in state_value["data_source"]
+            for item in state_value["mcp_servers"]
         ]
         return gr.update(value=state_value)
 
@@ -73,7 +73,7 @@ def McpServersModal(data_source: list[dict]):
         print("++++apply_state_change", state_value)
         disabled_tool_use = False
         enabled_server_count = 0
-        for item in state_value["data_source"]:
+        for item in state_value["mcp_servers"]:
             if item.get("enabled"):
                 if enabled_server_count >= max_mcp_server_count:
                     item["enabled"] = False
@@ -84,17 +84,17 @@ def McpServersModal(data_source: list[dict]):
                     else:
                         has_tool_use = True
         if not disabled_tool_use:
-            for item in state_value["data_source"]:
+            for item in state_value["mcp_servers"]:
                 if enabled_server_count >= max_mcp_server_count:
                     item["enabled"] = not item.get("enabled", False)
                 else:
                     item["disabled"] = False
         return (
             gr.update(
-                data_source=state_value["data_source"],
+                data_source=state_value["mcp_servers"],
                 footer=(
                     "没有可用的 MCP Server"
-                    if len(state_value["data_source"]) == 0
+                    if len(state_value["mcp_servers"]) == 0
                     else ""
                 ),
             ),
@@ -111,7 +111,7 @@ def McpServersModal(data_source: list[dict]):
         fn=lambda: gr.update(open=False), outputs=[mcp_servers_modal]
     )
 
-    return mcp_servers_modal, mcp_servers_state
+    return mcp_servers_modal, mcp_servers_state, mcp_servers_list, mcp_servers_switch
 
 
 # 我的设置
@@ -129,20 +129,20 @@ def MySettingModal(setting_data: list[dict]):
             with antd.Tabs.Item(label="个人中心", key="personal_center"):
                 ms.Text("个人中心")
             with antd.Tabs.Item(label="模型配置", key="model_setting"):
-                model_setting = ModelSetting(setting_data)
+                my_setting_state, model_setting_list = ModelSetting(setting_data)
             with antd.Tabs.Item(label="MCP服务设置", key="mcp_servers"):
                 ms.Text("MCP Servers")
     my_setting_modal.cancel(
         fn=lambda: gr.update(open=False), outputs=[my_setting_modal]
     )
 
-    return my_setting_modal, model_setting
+    return my_setting_modal, my_setting_state, model_setting_list
 
 
 # 模型配置
 def ModelSetting(data_source: list[dict]):
-    setting_data_source = gr.State({"model_source": data_source})
-    with ms.Div(elem_classes=["model-setting-card"]) as model_setting:
+    my_setting_state = gr.State({"model_list": data_source})
+    with ms.Div(elem_classes=["model-setting-card"]):
         with antd.List(
             data_source=data_source,
             header="大模型列表",
@@ -199,70 +199,64 @@ def ModelSetting(data_source: list[dict]):
 
         if "id" not in form_data or form_data["id"] is None:
             form_data["id"] = str(uuid.uuid4())
-            state_value["model_source"].append(form_data)
+            state_value["model_list"].append(form_data)
         else:
-            state_value["model_source"] = [
+            state_value["model_list"] = [
                 ({**form_data} if item["id"] == form_data["id"] else item)
-                for item in state_value["model_source"]
+                for item in state_value["model_list"]
             ]
-        return gr.update(open=False), gr.update(data_source=state_value["model_source"])
+        return gr.update(open=False), gr.update(value=state_value["model_list"])
 
     model_item_form.finish(
         on_submit,
-        inputs=[setting_data_source, model_item_form],
-        outputs=[edit_add_model_modal, model_setting_list],
-        queue=False,
+        inputs=[my_setting_state, model_item_form],
+        outputs=[edit_add_model_modal, my_setting_state],
     )
 
     def del_model_source(state_value, e: gr.EventData):
         current_model = e._data["component"]["switch"]["model"]
-        state_value["model_source"] = [
+        state_value["model_list"] = [
             item
-            for item in state_value["model_source"]
+            for item in state_value["model_list"]
             if item["id"] != current_model["id"]
         ]
-        return gr.update(value=state_value), gr.update(
-            data_source=state_value["model_source"]
-        )
+        return gr.update(value=state_value)
 
     del_btn.click(
         del_model_source,
-        inputs=[setting_data_source],
-        outputs=[setting_data_source, model_setting_list],
-        queue=False,
+        inputs=[my_setting_state],
+        outputs=[my_setting_state],
     )
 
     def switch_model_source(state_value, e: gr.EventData):
         current_model = e._data["component"]["model"]
         enabled = e._data["payload"][0]
-        state_value["model_source"] = [
+        state_value["model_list"] = [
             (
                 {**item, "enabled": enabled}
                 if item["id"] == current_model["id"]
                 else item
             )
-            for item in state_value["model_source"]
+            for item in state_value["model_list"]
         ]
-        return gr.update(value=state_value), gr.update(
-            data_source=state_value["model_source"]
-        )
+        return gr.update(value=state_value)
 
     switch_btn.change(
         switch_model_source,
-        inputs=[setting_data_source],
-        outputs=[setting_data_source, model_setting_list],
-        queue=False,
+        inputs=[my_setting_state],
+        outputs=[my_setting_state],
     )
 
     def setting_data_source_change(state_value):
         print("+++++++setting_data_source_change", state_value)
+        return gr.update(data_source=state_value["model_list"])
 
-    setting_data_source.change(
+    my_setting_state.change(
         setting_data_source_change,
-        inputs=[setting_data_source],
-        queue=False,
+        inputs=[my_setting_state],
+        outputs=[model_setting_list],
     )
-    return setting_data_source
+    return my_setting_state, model_setting_list
 
 
 # 模型新增弹框
