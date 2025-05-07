@@ -6,7 +6,7 @@ import modelscope_studio.components.base as ms
 import modelscope_studio.components.antd as antd
 import modelscope_studio.components.pro as pro
 import modelscope_studio.components.antdx as antdx
-from components.my_setting import McpServersModal, MySettingModal
+from components.my_setting import McpServersModal, MySettingModal, SelectChatModel
 
 from config import (
     primary_color,
@@ -222,7 +222,15 @@ with gr.Blocks(
                                     vertical=False,
                                     justify="space-between",
                                 ):
+
                                     with antd.Flex(gap="small", align="center"):
+                                        # 切换模型
+                                        (
+                                            model_chat_select,
+                                            model_chat_state,
+                                            selected_model,
+                                        ) = SelectChatModel(default_model_list)
+                                        antd.Divider(type="vertical")
                                         ms.Text("联网搜索")
                                         antd.Switch(checked=False)
                                         antd.Divider(type="vertical")
@@ -273,13 +281,23 @@ with gr.Blocks(
 
     # 保存模型设置
     def model_setting_change(model_setting_data, browser_state):
-        browser_state["model_list"] = model_setting_data["model_list"]
-        return gr.update(value=browser_state)
+        model_list = model_setting_data["model_list"]
+        browser_state["model_list"] = model_list
+        use_model_list = []
+        for model in model_list:
+            if model["enabled"] == True:
+                use_model_list.append(model)
+        print("++++use_model_list", use_model_list)
+        return (
+            gr.update(value=browser_state),
+            gr.update(value=use_model_list),
+            gr.update(disabled=True, value=model_list[1]["id"]),
+        )
 
     my_setting_state.change(
         model_setting_change,
         inputs=[my_setting_state, browser_state],
-        outputs=browser_state,
+        outputs=[browser_state, model_chat_state, model_chat_select],
     )
 
     # 保存 MCP 配置
@@ -295,9 +313,14 @@ with gr.Blocks(
 
     # 加载 MCP 配置、模型配置
     def load(browser_state_value):
-        print("++++load", browser_state_value["mcp_servers"])
+        # print("++++load", browser_state_value["mcp_servers"])
         map_servers = browser_state_value["mcp_servers"]
         model_list = browser_state_value["model_list"]
+        # 可用的模型
+        use_model_list = []
+        for model in model_list:
+            if model["enabled"] == True:
+                use_model_list.append(model)
         return (
             gr.update(value=map_servers),
             gr.update(data_source=map_servers),
@@ -305,6 +328,8 @@ with gr.Blocks(
                 value=browser_state_value["model_list"],
             ),
             gr.update(data_source=model_list),
+            gr.update(value=model_list),
+            gr.update(options=use_model_list, disabled=False),
         )
 
     demo.load(
@@ -315,6 +340,8 @@ with gr.Blocks(
             mcp_servers_list,
             my_setting_state,
             model_setting_list,
+            model_chat_state,
+            model_chat_select,
         ],
         trigger_mode="always_last",
     )

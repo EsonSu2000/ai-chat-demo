@@ -248,7 +248,7 @@ def ModelSetting(data_source: list[dict]):
     )
 
     def setting_data_source_change(state_value):
-        print("+++++++setting_data_source_change", state_value)
+        # print("+++++++setting_data_source_change", state_value)
         return gr.update(data_source=state_value["model_list"])
 
     my_setting_state.change(
@@ -312,3 +312,37 @@ def edit_or_add_model():
     )
 
     return model_item_form, edit_add_model_modal
+
+
+# 切换模型
+def SelectChatModel(data_source: list[dict]):
+    model_chat_state = gr.State({"model_chat_list": data_source})
+    selected_model = gr.State({"selected_model": data_source[0]})
+    model_chat_select = antd.Select(
+        options=data_source,
+        value=data_source[0]["id"],
+        field_names={"label": "name", "value": "id"},
+        disabled=True,
+    )
+
+    def model_chat_state_change():
+        print("++++model_chat_state_change++++")
+
+    model_chat_state.change(
+        model_chat_state_change,
+        inputs=[model_chat_state],
+    )
+
+    def model_chat_select_change(state_value, e: gr.EventData):
+        print("++++model_chat_select_change++++", e._data["payload"][1])
+        _value = e._data["payload"][1]
+        state_value["selected_model"] = _value
+        return gr.update(value=_value["id"]), gr.update(value=state_value)
+
+    model_chat_select.select(
+        model_chat_select_change,
+        inputs=[selected_model],
+        outputs=[model_chat_select, selected_model],
+        queue=False,
+    )
+    return model_chat_select, model_chat_state, selected_model
