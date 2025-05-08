@@ -324,11 +324,12 @@ def SelectChatModel(data_source: list[dict]):
     with antd.Select(
         value=data_source[0]["id"],
         elem_style=dict(width=200),
+        
     ) as model_chat_select:
         # slot 里面的组件必须要带slot属性
         # todo 需要优化
-        if len(data_source) > 0:
-            for item in data_source:
+        if len(model_chat_state.value) > 0:
+            for item in model_chat_state.value:
                 with antd.Select.Option(value=item["id"]):
                     with ms.Slot("label"):
                         antd.Typography.Text(item["name"])
