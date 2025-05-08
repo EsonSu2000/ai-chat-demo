@@ -225,13 +225,11 @@ with gr.Blocks(
 
                                     with antd.Flex(gap="small", align="center"):
                                         # 切换模型
-                                        (
-                                            model_chat_select,
-                                            model_chat_state,
-                                            selected_model,
-                                        ) = SelectChatModel(default_model_list)
+                                        (model_chat_state, selected_model) = (
+                                            SelectChatModel(default_model_list)
+                                        )
                                         antd.Divider(type="vertical")
-                                        ms.Text("联网搜索")
+                                        ms.Text("联网搜索1")
                                         antd.Switch(checked=False)
                                         antd.Divider(type="vertical")
                                         with antd.Button(
@@ -249,6 +247,7 @@ with gr.Blocks(
                                         ) as send_btn:
                                             with ms.Slot("icon"):
                                                 antd.Icon("SendOutlined")
+
     send_btn.click(
         fn=chat_fn,
         inputs=[input],
@@ -257,17 +256,13 @@ with gr.Blocks(
     # 发送消息
     input.submit(
         fn=chat_fn,
-        inputs=[input, mcp_servers_state, chatbot],
+        inputs=[input],
         outputs=[chatbot, input, send_btn],
     )
     # 选择欢迎语
-    chatbot.welcome_prompt_select(
-        fn=select_welcome_prompt, outputs=[input], queue=False
-    )
+    chatbot.welcome_prompt_select(fn=select_welcome_prompt, outputs=[input])
     # 点击设置按钮
-    setting_btn.click(
-        fn=lambda: gr.update(open=True), outputs=[mcp_servers_modal], queue=False
-    )
+    setting_btn.click(fn=lambda: gr.update(open=True), outputs=[mcp_servers_modal])
     # 保存 MCP Servers
     mcp_servers_state.change(
         save_mcp_servers,
@@ -275,9 +270,7 @@ with gr.Blocks(
         outputs=[browser_state],
     )
     # 点击我的名称按钮
-    my_setting_btn.click(
-        lambda: gr.update(open=True), outputs=[my_setting_modal], queue=False
-    )
+    my_setting_btn.click(lambda: gr.update(open=True), outputs=[my_setting_modal])
 
     # 保存模型设置
     def model_setting_change(model_setting_data, browser_state):
@@ -287,17 +280,17 @@ with gr.Blocks(
         for model in model_list:
             if model["enabled"] == True:
                 use_model_list.append(model)
-        print("++++use_model_list", use_model_list)
+        print("use_model_list", use_model_list)
+        ### state 直接返回值就会触发change事件
         return (
             gr.update(value=browser_state),
-            gr.update(value=use_model_list),
-            gr.update(disabled=True, value=model_list[1]["id"]),
+            use_model_list,
         )
 
     my_setting_state.change(
         model_setting_change,
         inputs=[my_setting_state, browser_state],
-        outputs=[browser_state, model_chat_state, model_chat_select],
+        outputs=[browser_state, model_chat_state],
     )
 
     # 保存 MCP 配置
@@ -321,6 +314,7 @@ with gr.Blocks(
         for model in model_list:
             if model["enabled"] == True:
                 use_model_list.append(model)
+        # print("++++load", map_servers, use_model_list)
         return (
             gr.update(value=map_servers),
             gr.update(data_source=map_servers),
@@ -328,8 +322,7 @@ with gr.Blocks(
                 value=browser_state_value["model_list"],
             ),
             gr.update(data_source=model_list),
-            gr.update(value=model_list),
-            gr.update(options=use_model_list, disabled=False),
+            use_model_list,
         )
 
     demo.load(
@@ -341,8 +334,6 @@ with gr.Blocks(
             my_setting_state,
             model_setting_list,
             model_chat_state,
-            model_chat_select,
         ],
-        trigger_mode="always_last",
     )
 demo.launch(ssr_mode=False)

@@ -1,3 +1,4 @@
+import queue
 import modelscope_studio.components.antd as antd
 from modelscope_studio.components.antd.typography import title
 import modelscope_studio.components.base as ms
@@ -239,12 +240,14 @@ def ModelSetting(data_source: list[dict]):
             )
             for item in state_value["model_list"]
         ]
+        # print("+++++++switch_model_source", state_value)
         return gr.update(value=state_value)
 
     switch_btn.change(
         switch_model_source,
         inputs=[my_setting_state],
         outputs=[my_setting_state],
+        queue=True,
     )
 
     def setting_data_source_change(state_value):
@@ -316,33 +319,55 @@ def edit_or_add_model():
 
 # 切换模型
 def SelectChatModel(data_source: list[dict]):
-    model_chat_state = gr.State({"model_chat_list": data_source})
-    selected_model = gr.State({"selected_model": data_source[0]})
-    model_chat_select = antd.Select(
-        options=data_source,
+    model_chat_state = gr.State(data_source)
+    selected_model = gr.State(data_source[0])
+    with antd.Select(
         value=data_source[0]["id"],
-        field_names={"label": "name", "value": "id"},
-        disabled=True,
-    )
+        elem_style=dict(width=200),
+    ) as model_chat_select:
+        # slot 里面的组件必须要带slot属性
+        # todo 需要优化
+        if len(data_source) > 0:
+            for item in data_source:
+                with antd.Select.Option(value=item["id"]):
+                    with ms.Slot("label"):
+                        antd.Typography.Text(item["name"])
 
-    def model_chat_state_change():
-        print("++++model_chat_state_change++++")
+    def model_chat_state_change(model_chat_state_value, select_model_value):
+        # print("++++model_chat_state_change++++", model_chat_state_value)
+        # 判断model_chat_state_value是否包含select_model_value
+        if select_model_value["id"] not in [
+            item["id"] for item in model_chat_state_value
+        ]:
+            select_model_value = (
+                model_chat_state_value[0] if len(model_chat_state_value) > 0 else {}
+            )
+        print(
+            "++++model_chat_state_change select_model_value++++",
+            model_chat_state_value,
+            select_model_value,
+        )
+        return (
+            gr.update(value=select_model_value["id"]),
+            select_model_value,
+            gr.update(value=model_chat_state_value),
+        )
 
     model_chat_state.change(
         model_chat_state_change,
-        inputs=[model_chat_state],
+        inputs=[model_chat_state, selected_model],
+        outputs=[model_chat_select, selected_model, model_chat_state],
     )
 
-    def model_chat_select_change(state_value, e: gr.EventData):
-        print("++++model_chat_select_change++++", e._data["payload"][1])
-        _value = e._data["payload"][1]
-        state_value["selected_model"] = _value
-        return gr.update(value=_value["id"]), gr.update(value=state_value)
+    def model_chat_select_change(id):
+        data = next((item for item in data_source if item["id"] == id), {})
+        print("++++model_chat_select_change++++", data)
+        return (gr.skip(), data)
 
-    model_chat_select.select(
+    model_chat_select.change(
         model_chat_select_change,
-        inputs=[selected_model],
+        inputs=[model_chat_select],
         outputs=[model_chat_select, selected_model],
         queue=False,
     )
-    return model_chat_select, model_chat_state, selected_model
+    return model_chat_state, selected_model
