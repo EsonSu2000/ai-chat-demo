@@ -1,4 +1,5 @@
 import queue
+from httpx import options
 import modelscope_studio.components.antd as antd
 from modelscope_studio.components.antd.typography import title
 import modelscope_studio.components.base as ms
@@ -321,23 +322,46 @@ def edit_or_add_model():
 def SelectChatModel(data_source: list[dict]):
     model_chat_state = gr.State(data_source)
     selected_model = gr.State(data_source[0])
-    with antd.Select(
-        value=data_source[0]["id"],
-        elem_style=dict(width=200),
-        
-    ) as model_chat_select:
-        # slot 里面的组件必须要带slot属性
-        # todo 需要优化
-        if len(model_chat_state.value) > 0:
-            for item in model_chat_state.value:
-                with antd.Select.Option(value=item["id"]):
-                    with ms.Slot("label"):
-                        antd.Typography.Text(item["name"])
+
+    @gr.render(inputs=[model_chat_state, selected_model], queue=False)
+    def model_chat_select_render(model_chat_state_value, select_model_value):
+        print("+++++++select_model_chat1111", model_chat_state_value)
+        print("+++++++select_model_chat2222", select_model_value)
+        model_chat_select = antd.Select(
+            value=select_model_value.get("id"),
+            elem_style=dict(width=200),
+            options=model_chat_state_value,
+            field_names={
+                "label": "name",
+                "value": "id",
+            },
+        )
+        # with antd.Select(
+        #     value=select_model_value.get("id"),
+        #     elem_style=dict(width=200),
+        # ) as model_chat_select:
+        #     # slot 里面的组件必须要带slot属性
+        #     # todo 需要优化
+        #     if len(model_chat_state_value) > 0:
+        #         for item in model_chat_state_value:
+        #             with antd.Select.Option(value=item["id"]):
+        #                 with ms.Slot("label"):
+        #                     antd.Typography.Text(item["name"])
+        #     else:
+        #         with antd.Select.Option(value=""):
+        #             with ms.Slot("label"):
+        #                 antd.Typography.Text("没有可用的模型")
+        model_chat_select.change(
+            model_chat_select_change,
+            inputs=[model_chat_select, model_chat_state],
+            outputs=[selected_model],
+            queue=False,
+        )
 
     def model_chat_state_change(model_chat_state_value, select_model_value):
-        # print("++++model_chat_state_change++++", model_chat_state_value)
+        print("++++model_chat_state_change++++", model_chat_state_value)
         # 判断model_chat_state_value是否包含select_model_value
-        if select_model_value["id"] not in [
+        if select_model_value.get("id") not in [
             item["id"] for item in model_chat_state_value
         ]:
             select_model_value = (
@@ -348,27 +372,17 @@ def SelectChatModel(data_source: list[dict]):
             model_chat_state_value,
             select_model_value,
         )
-        return (
-            gr.update(value=select_model_value["id"]),
-            select_model_value,
-            gr.update(value=model_chat_state_value),
-        )
+        return select_model_value
 
     model_chat_state.change(
         model_chat_state_change,
         inputs=[model_chat_state, selected_model],
-        outputs=[model_chat_select, selected_model, model_chat_state],
+        outputs=[selected_model],
     )
 
-    def model_chat_select_change(id):
-        data = next((item for item in data_source if item["id"] == id), {})
-        print("++++model_chat_select_change++++", data)
-        return (gr.skip(), data)
+    def model_chat_select_change(id, model_chat_state_value):
+        data = next((item for item in model_chat_state_value if item["id"] == id), {})
+        print("++++model_chat_select_change++++", data["id"])
+        return data
 
-    model_chat_select.change(
-        model_chat_select_change,
-        inputs=[model_chat_select],
-        outputs=[model_chat_select, selected_model],
-        queue=False,
-    )
     return model_chat_state, selected_model
